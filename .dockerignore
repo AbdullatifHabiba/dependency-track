@@ -5,6 +5,10 @@ scripts/
 src/
 !src/main/docker/create-jre.sh
 !src/main/docker/logback*.xml
+!src/main/java/
+!src/main/proto/
+!src/main/resources/
+!src/main/webapp/
 target/
 !target/*.jar
 /*.md
