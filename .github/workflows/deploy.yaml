@@ -1,0 +1,74 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [main, master, 'feature/**']
+  pull_request:
+    branches: [main, master, 'feature/**']  
+
+jobs:
+  
+  build-push-backend:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+        aws-region: ${{ secrets.AWS_REGION }}
+        
+    - name: Login to Public ECR
+      run: |
+        aws ecr-public get-login-password --region us-east-1 | docker login --username AWS --password-stdin public.ecr.aws
+    
+    - name: Build Backend Image
+      run: |
+        docker build -t public.ecr.aws/a1x0e8q5/abdu/dt-backend:latest -f Dockerfile.backend .
+        echo "✅ Backend image built successfully"
+        
+    - name: Push Backend Image
+      run: |
+        docker push public.ecr.aws/a1x0e8q5/abdu/dt-backend:latest
+        echo "✅ Backend image pushed to ECR"
+        
+    - name: Deploy Backend to Server
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_IP }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /opt/dependency-track
+          echo "🚀 Starting backend deployment..."
+          
+          # Pull the new backend image
+          echo "🔄 Pulling new backend image..."
+          docker compose pull backend
+          
+          # Stop and remove the old backend container
+          echo "🛑 Stopping existing backend container..."
+          docker compose stop backend || true
+          docker compose rm -f backend || true
+          
+          # Start the new backend container
+          echo "🎯 Starting new backend container..."
+          docker compose up -d --no-deps --force-recreate backend
+          
+          # Wait for backend to be healthy
+          echo "⏳ Waiting for backend to become healthy..."
+          sleep 30
+          
+          echo "✅ Backend deployment complete!"
+          echo "📊 Service status:"
+          docker compose ps backend
+          
+          echo "🔍 Backend logs (last 15 lines):"
+          docker compose logs --tail=15 backend
+          
+          # Health check
+          echo "🏥 Performing health check..."
+          curl -f http://localhost:8080/health && echo "Health check PASSED" || echo "Health check FAILED"
