@@ -2,7 +2,7 @@
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 
 WORKDIR /app
-COPY ./dependency-track/ .
+COPY . .
 
 # Build the application with embedded Jetty profile (executable JAR)
 RUN mvn clean package -P quick -P clean-exclude-wars -P enhance -P embedded-jetty -Dlogback.configuration.file=src/main/docker/logback.xml
