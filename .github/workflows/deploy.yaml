@@ -5,7 +5,10 @@ on:
     branches: [main, master, 'feature/**']
   pull_request:
     branches: [main, master, 'feature/**']  
-
+permissions:
+  id-token: write
+  contents: read
+  
 jobs:
   
   build-push-backend:
